@@ -55,12 +55,7 @@ Generated STEP files are written to the `out/` directory by default.
 - `parse_dsl()` — simple line-based parser producing a list of commands.
 - `validate_dsl()` — checks IDs, numeric ranges, and references; returns error messages if invalid.
 - `execute_dsl()` — builds CadQuery solids, applies transforms, performs boolean ops, and exports STEP via `cadquery.exporters`.
-- `do_workflow_with_gradio.py` — wraps the pipeline in a Gradio UI and shows a Three.js STL preview.
-
-## Configuration & tuning
-
-- Change `MODEL_PATH`, `n_ctx`, or `n_threads` in `natural_languange_to_CAD.py` to match your hardware.
-- The main safety is DSL validation: if the DSL is invalid the pipeline retries (see `generate_part_from_text()`).
+- `do_workflow_with_gradio.py` — wraps the pipeline in a Gradio UI to generate step from prompt and download it from browser/gradio 
 
 ## Screenshots
 
@@ -75,13 +70,11 @@ Result / step preview (Gradio):
 ## Where to look in the code
 
 - `natural_languange_to_CAD.py` — LLM prompt, DSL parser/validator, CadQuery executor, and the default `MODEL_PATH`.
-- `do_workflow_with_gradio.py` — Gradio UI, STEP → STL conversion and Three.js preview embedding.
-- `utilities_during_setup_etc/download_llm.py` — helper scripts used during setup (if present).
+- `do_workflow_with_gradio.py` — Gradio UI to input prompt
 
-## Next steps / suggestions
+## Next steps 
 
-- Add a small `requirements.txt` (I can generate one by scanning imports).
-- Optionally add example prompts and expected DSL outputs as unit tests (there are test files in `utilities_during_setup_etc/`).
+- Implement visualization in gradio
 
 ---
 Updated: November 11, 2025
