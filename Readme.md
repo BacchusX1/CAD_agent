@@ -1,114 +1,88 @@
-# cad_agent
 
-A small, focused project that turns natural-language CAD requests into CAD queries and provides a minimal Gradio demo/workflow.
+# CAD Agent — Natural language → CAD (DSL → STEP)
+
+A compact pipeline that converts plain-English part descriptions into a small domain-specific language (DSL), validates it, executes it with CadQuery, and exports STEP files — with a tiny Gradio demo for previewing results.
+
+## Project idea (short)
+
+This project demonstrates a constrained, reliable way to use a local LLM as an interpreter: the LLM maps user text to an exact DSL (no extra prose). The repository focuses on the end-to-end flow:
+
+- Natural language prompt → LLM → DSL commands
+- DSL parser & validator → CadQuery executor
+- Export STEP and preview in-browser using a Three.js/STL viewer inside a Gradio UI
+
+The DSL is intentionally small (CREATE_BOX, CREATE_CYLINDER, TRANSLATE, SUBTRACT, FILLET, EXPORT) so the LLM's output can be validated and executed deterministically.
+
+## Which LLM is used?
+
+By default the project uses a local GGUF model loaded with `llama_cpp` (the `llama-cpp-python` package). The code points to a Mistral 7B Instruct GGUF snapshot by default:
+
+- Model: TheBloke / Mistral-7B-Instruct (GGUF)
+- Loader: `from llama_cpp import Llama` (see `natural_languange_to_CAD.py`)
+- Default model path is set in `natural_languange_to_CAD.py` as `MODEL_PATH` — edit that constant to point to your downloaded GGUF file.
+
+If you prefer remote APIs (OpenAI, Hugging Face inference, etc.), you can replace `nl_to_dsl()` with an API call and keep the same parsing/validation/execution pipeline.
 
 ## Quick start
 
-- Requirements: Python 3.10+.
-- (Optional) Create and activate a virtual environment:
+1. Install the main dependencies (if you don't have a `requirements.txt`):
 
-	python -m venv .venv
-	source .venv/bin/activate
+```bash
+pip install cadquery gradio llama-cpp-python
+```
 
-- Install dependencies if a requirements file exists:
+2. Ensure you have a compatible GGUF model downloaded and update `MODEL_PATH` in `natural_languange_to_CAD.py`.
 
-	pip install -r requirements.txt
+3. Run the Gradio demo:
 
-- Run the Gradio demo:
+```bash
+python do_workflow_with_gradio.py
+```
 
-	python do_workflow_with_gradio.py
+4. Or use the script directly (CLI test):
 
-- Or run a single-script converter (example):
+```bash
+python natural_languange_to_CAD.py
+# or
+python natural_languange_to_CAD.py "Create a box 10x10x10"
+```
 
-	python natural_languange_to_CAD.py "Create a box 10x10x10"
+Generated STEP files are written to the `out/` directory by default.
 
-## Files of interest
+## Pipeline / architecture
 
-- `do_workflow_with_gradio.py` — small Gradio demo/workflow entrypoint.
-- `natural_languange_to_CAD.py` — convert a natural-language prompt to a CAD query.
+- `nl_to_dsl(user_prompt)` — sends a system+user prompt to the LLM and expects ONLY DSL lines in the response.
+- `parse_dsl()` — simple line-based parser producing a list of commands.
+- `validate_dsl()` — checks IDs, numeric ranges, and references; returns error messages if invalid.
+- `execute_dsl()` — builds CadQuery solids, applies transforms, performs boolean ops, and exports STEP via `cadquery.exporters`.
+- `do_workflow_with_gradio.py` — wraps the pipeline in a Gradio UI and shows a Three.js STL preview.
+
+## Configuration & tuning
+
+- Change `MODEL_PATH`, `n_ctx`, or `n_threads` in `natural_languange_to_CAD.py` to match your hardware.
+- The main safety is DSL validation: if the DSL is invalid the pipeline retries (see `generate_part_from_text()`).
 
 ## Screenshots
 
-Prompt (input):
+Prompt (input) in gradio browser page:
 
 ![Prompt screenshot](screenshots/prompt.png)
 
-Result / step view:
+Result / step preview (Gradio):
 
 ![Result screenshot](screenshots/result_step.png)
 
-## Examples in the system prompt
+## Where to look in the code
 
-```
-Examples:
+- `natural_languange_to_CAD.py` — LLM prompt, DSL parser/validator, CadQuery executor, and the default `MODEL_PATH`.
+- `do_workflow_with_gradio.py` — Gradio UI, STEP → STL conversion and Three.js preview embedding.
+- `utilities_during_setup_etc/download_llm.py` — helper scripts used during setup (if present).
 
-User: Make a 30x20x10 box.
-Assistant:
-CREATE_BOX id=box1 width=30 height=20 depth=10
-EXPORT filename="box1.step"
+## Next steps / suggestions
 
-User: Make a 40x20x5 plate with a centered hole of radius 3.
-Assistant:
-CREATE_BOX id=plate width=40 height=20 depth=5
-CREATE_CYLINDER id=hole1 radius=3 height=10
-SUBTRACT target=plate tool=hole1
-EXPORT filename="plate_with_hole.step"
-
-User: Make a block 60x30x15 mm with two holes of radius 5 mm spaced 40 mm apart.
-Assistant:
-CREATE_BOX id=block width=60 height=30 depth=15
-CREATE_CYLINDER id=hole1 radius=5 height=20
-TRANSLATE id=hole1 x=-20 y=0 z=0
-CREATE_CYLINDER id=hole2 radius=5 height=20
-TRANSLATE id=hole2 x=20 y=0 z=0
-SUBTRACT target=block tool=hole1
-SUBTRACT target=block tool=hole2
-EXPORT filename="block_with_holes.step"
-
-User: Create a 50x50x10 square plate with four corner holes, radius 4mm, inset 8mm from edges.
-Assistant:
-CREATE_BOX id=plate width=50 height=50 depth=10
-CREATE_CYLINDER id=hole1 radius=4 height=15
-TRANSLATE id=hole1 x=-17 y=-17 z=0
-CREATE_CYLINDER id=hole2 radius=4 height=15
-TRANSLATE id=hole2 x=17 y=-17 z=0
-CREATE_CYLINDER id=hole3 radius=4 height=15
-TRANSLATE id=hole3 x=-17 y=17 z=0
-CREATE_CYLINDER id=hole4 radius=4 height=15
-TRANSLATE id=hole4 x=17 y=17 z=0
-SUBTRACT target=plate tool=hole1
-SUBTRACT target=plate tool=hole2
-SUBTRACT target=plate tool=hole3
-SUBTRACT target=plate tool=hole4
-EXPORT filename="plate_corner_holes.step"
-
-User: Make a cylinder radius 10 mm and height 30 mm with rounded edges.
-Assistant:
-CREATE_CYLINDER id=cyl1 radius=10 height=30
-FILLET id=cyl1 radius=2
-EXPORT filename="rounded_cylinder.step"
-
-User: Create a 100x50x20 base with a 30x30x40 tower centered on top.
-Assistant:
-CREATE_BOX id=base width=100 height=50 depth=20
-CREATE_BOX id=tower width=30 height=30 depth=40
-TRANSLATE id=tower x=0 y=0 z=30
-EXPORT filename="base_with_tower.step"
-
-User: Make a 80x40x12 plate with a slot 50mm long, 8mm wide through the center.
-Assistant:
-CREATE_BOX id=plate width=80 height=40 depth=12
-CREATE_BOX id=slot width=50 height=8 depth=20
-SUBTRACT target=plate tool=slot
-EXPORT filename="plate_with_slot.step"
-
-Now respond to the user's request with ONLY DSL commands.
-```
-
-## Notes
-
-- This README is intentionally lean. See the scripts for configurable options and model/setup details.
+- Add a small `requirements.txt` (I can generate one by scanning imports).
+- Optionally add example prompts and expected DSL outputs as unit tests (there are test files in `utilities_during_setup_etc/`).
 
 ---
-Generated on November 11, 2025.
+Updated: November 11, 2025
 
