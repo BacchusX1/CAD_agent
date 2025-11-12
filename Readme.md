@@ -63,7 +63,7 @@ Prompt (input) in gradio browser page:
 
 ![Prompt screenshot](screenshots/prompt.png)
 
-Result / step preview (Gradio):
+Result / step file :
 
 ![Result screenshot](screenshots/result_step.png)
 
