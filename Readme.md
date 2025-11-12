@@ -75,6 +75,9 @@ Result / step preview (Gradio):
 ## Next steps 
 
 - Implement visualization in gradio
+- Test without NL to DSL and check if there is actually a benefit
+- scale towards simple components
+- use better LLM
 
 ---
 Updated: November 11, 2025
